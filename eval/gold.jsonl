@@ -1,0 +1,44 @@
+{"id":"q01","q":"Which AI practices are banned outright in the EU?","relevant":["ai-act/art-5"],"evidence":"The following AI practices shall be prohibited"}
+{"id":"q02","q":"Can a city government score citizens on their social behaviour and use that score to limit their access to services?","relevant":["ai-act/art-5"],"evidence":"social behaviour"}
+{"id":"q03","q":"We want to detect employees' emotions through their webcam during work calls. Is that allowed?","relevant":["ai-act/art-5"],"evidence":"infer emotions of a natural person in the areas of workplace and education institutions"}
+{"id":"q04","q":"Is it lawful to build a facial recognition database by scraping photos from the internet or CCTV?","relevant":["ai-act/art-5"],"evidence":"untargeted scraping of facial images from the internet or CCTV footage"}
+{"id":"q05","q":"When is an AI system classified as high-risk?","relevant":["ai-act/art-6"],"evidence":"that AI system shall be considered to be high-risk where both of the following conditions are fulfilled"}
+{"id":"q06","q":"Our tool ranks and filters job applications for recruiters. What risk category is it in?","relevant":["ai-act/anx-III","ai-act/art-6"],"evidence":"the recruitment or selection of natural persons"}
+{"id":"q07","q":"A school uses AI to grade students' exams and decide admissions. Is this high-risk?","relevant":["ai-act/anx-III"],"evidence":"determine access or admission or to assign natural persons to educational and vocational training institutions"}
+{"id":"q08","q":"Is an AI system used by a bank to assess people's creditworthiness high-risk?","relevant":["ai-act/anx-III"],"evidence":"evaluate the creditworthiness of natural persons"}
+{"id":"q09","q":"What does a provider of a high-risk AI system have to put in place for risk management?","relevant":["ai-act/art-9"],"evidence":"A risk management system shall be established, implemented, documented and maintained"}
+{"id":"q10","q":"What rules apply to the training, validation and testing data of high-risk AI systems?","relevant":["ai-act/art-10"],"evidence":"data governance and management practices"}
+{"id":"q11","q":"What technical documentation must be drawn up before a high-risk system is placed on the market?","relevant":["ai-act/art-11","ai-act/anx-IV"],"evidence":"The technical documentation of a high-risk AI system shall be drawn up before that system is placed on the market"}
+{"id":"q12","q":"Do high-risk AI systems have to keep automatic logs of events?","relevant":["ai-act/art-12"],"evidence":"technically allow for the automatic recording of events"}
+{"id":"q13","q":"How must a high-risk AI system enable human oversight?","relevant":["ai-act/art-14"],"evidence":"designed and developed in such a way, including with appropriate human-machine interface tools, that they can be effectively overseen by natural persons"}
+{"id":"q14","q":"What accuracy, robustness and cybersecurity requirements apply to high-risk AI?","relevant":["ai-act/art-15"],"evidence":"appropriate level of accuracy, robustness, and cybersecurity"}
+{"id":"q15","q":"What are the main obligations of a company that deploys (uses) a high-risk AI system but did not build it?","relevant":["ai-act/art-26"],"evidence":"Deployers of high-risk AI systems shall take appropriate technical and organisational measures"}
+{"id":"q16","q":"When does a deployer have to carry out a fundamental rights impact assessment?","relevant":["ai-act/art-27"],"evidence":"fundamental rights impact assessment"}
+{"id":"q17","q":"Must users be told they are talking to a chatbot?","relevant":["ai-act/art-50"],"evidence":"the natural persons concerned are informed that they are interacting with an AI system"}
+{"id":"q18","q":"Do we have to label AI-generated images or deepfakes?","relevant":["ai-act/art-50"],"evidence":"deep fake"}
+{"id":"q19","q":"When is a general-purpose AI model considered to have systemic risk?","relevant":["ai-act/art-51"],"evidence":"it has high impact capabilities"}
+{"id":"q20","q":"What must providers of general-purpose AI models do about copyright and training content?","relevant":["ai-act/art-53"],"evidence":"Union law on copyright and related rights"}
+{"id":"q21","q":"What are the fines for breaching the AI Act's prohibited practices?","relevant":["ai-act/art-99"],"evidence":"administrative fines of up to EUR 35 000 000"}
+{"id":"q22","q":"Do our staff need AI literacy training?","relevant":["ai-act/art-4"],"evidence":"sufficient level of AI literacy"}
+{"id":"q23","q":"When does the AI Act start to apply and what applies earlier?","relevant":["ai-act/art-113"],"evidence":"It shall apply from 2 August 2026"}
+{"id":"q24","q":"What must a provider report if a high-risk AI system causes a serious incident?","relevant":["ai-act/art-73"],"evidence":"serious incident"}
+{"id":"q25","q":"Does the AI Act apply to a non-EU company whose AI system output is used in the EU?","relevant":["ai-act/art-2"],"evidence":"the output produced by the AI system is used in the Union"}
+{"id":"q26","q":"Which conformity assessment procedure must a high-risk system go through?","relevant":["ai-act/art-43"],"evidence":"conformity assessment procedure"}
+{"id":"q27","q":"Must high-risk AI systems be registered in an EU database?","relevant":["ai-act/art-49"],"evidence":"EU database"}
+{"id":"q28","q":"What is the legal definition of an AI system?","relevant":["ai-act/art-3"],"evidence":"‘AI system’ means a machine-based system"}
+{"id":"q29","q":"Can people ask for an explanation of a decision made with a high-risk AI system?","relevant":["ai-act/art-86"],"evidence":"clear and meaningful explanations"}
+{"id":"q30","q":"What are the six principles for processing personal data?","relevant":["gdpr/art-5"],"evidence":"lawfulness, fairness and transparency"}
+{"id":"q31","q":"On what legal grounds can personal data be processed?","relevant":["gdpr/art-6"],"evidence":"Processing shall be lawful only if and to the extent that at least one of the following applies"}
+{"id":"q32","q":"Can we process health data or biometric data to identify people?","relevant":["gdpr/art-9"],"evidence":"Processing of personal data revealing racial or ethnic origin"}
+{"id":"q33","q":"Is a decision made only by an algorithm, with legal effect on a person, permitted?","relevant":["gdpr/art-22"],"evidence":"right not to be subject to a decision based solely on automated processing"}
+{"id":"q34","q":"Within how many hours must a personal data breach be reported to the authority?","relevant":["gdpr/art-33"],"evidence":"not later than 72 hours"}
+{"id":"q35","q":"When is a data protection impact assessment required?","relevant":["gdpr/art-35"],"evidence":"data protection impact assessment"}
+{"id":"q36","q":"When must an organisation appoint a data protection officer?","relevant":["gdpr/art-37"],"evidence":"The controller and the processor shall designate a data protection officer"}
+{"id":"q37","q":"What does a data subject have the right to delete under the right to be forgotten?","relevant":["gdpr/art-17"],"evidence":"erasure of personal data concerning him or her without undue delay"}
+{"id":"q38","q":"What must a controller tell people when collecting their data?","relevant":["gdpr/art-13"],"evidence":"the controller shall, at the time when personal data are obtained, provide the data subject with all of the following information"}
+{"id":"q39","q":"Can personal data be transferred outside the EU?","relevant":["gdpr/art-44","gdpr/art-45","gdpr/art-46"],"evidence":"transfer"}
+{"id":"q40","q":"What are the maximum GDPR administrative fines?","relevant":["gdpr/art-83"],"evidence":"administrative fines up to 20 000 000 EUR"}
+{"id":"q41","q":"How must consent be given and can it be withdrawn?","relevant":["gdpr/art-7","gdpr/art-4"],"evidence":"consent"}
+{"id":"q42","q":"What contract must exist between a controller and a processor?","relevant":["gdpr/art-28"],"evidence":"processor"}
+{"id":"q43","q":"Does data protection have to be built in by design and by default?","relevant":["gdpr/art-25"],"evidence":"implement appropriate technical and organisational measures"}
+{"id":"q44","q":"A hospital uses an AI tool to triage patients using their medical records. Which rules matter?","relevant":["ai-act/anx-III","ai-act/art-6","gdpr/art-9"],"evidence":"health"}
