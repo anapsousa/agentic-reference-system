@@ -44,10 +44,10 @@ def score_question(g: dict, hits, by_id: dict, ks=KS) -> dict:
     return out
 
 
-def evaluate(retriever: Retriever, gold: list[dict], mode: str, ks=KS) -> dict:
+def evaluate(retriever: Retriever, gold: list[dict], mode: str, ks=KS, kinds=None) -> dict:
     by_id = {c["id"]: c for c in retriever.chunks}
-    rows = [score_question(g, retriever.search(g["q"], k=max(ks), mode=mode), by_id, ks) for g in gold]
+    rows = [score_question(g, retriever.search(g["q"], k=max(ks), mode=mode, kinds=kinds), by_id, ks) for g in gold]
     keys = [f"{m}@{k}" for m in ("hit", "recall") for k in ks] + ["rr", "citation@1"]
     summary = {k: round(statistics.mean(r[k] for r in rows), 4) for k in keys}
     summary["mrr"] = summary.pop("rr")
-    return {"mode": mode, "n": len(rows), "summary": summary, "rows": rows}
+    return {"mode": mode, "kinds": kinds, "n": len(rows), "summary": summary, "rows": rows}

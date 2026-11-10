@@ -76,3 +76,10 @@ def test_citation_requires_quote_to_be_in_chunk_not_just_right_unit():
     g = {"id": "x", "q": "q", "relevant": ["d/art-2"], "evidence": "not in this chunk at all"}
     r = score_question(g, [Hit(CH[1], 1.0)], BY_ID)
     assert r["hit@1"] == 1 and r["citation@1"] == 0
+
+
+def test_kinds_filter_excludes_recitals():
+    ch = CH + [{"id": "d/rct-1#1", "unit": "d/rct-1", "doc": "d", "kind": "rct", "label": "Recital 1", "text": "data breach 72 hours notified breach breach"}]
+    r = Retriever(ch)
+    assert r.search("data breach 72 hours", k=1, mode="bm25")[0].id == "d/rct-1#1"
+    assert r.search("data breach 72 hours", k=1, mode="bm25", kinds=("art", "anx"))[0].id == "d/art-2#1"

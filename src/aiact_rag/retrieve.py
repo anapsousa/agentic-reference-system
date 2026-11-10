@@ -25,7 +25,9 @@ class Hit:
         return self.chunk["unit"]
 
 
-def _top(scores, chunks, k) -> list[Hit]:
+def _top(scores, chunks, k, allowed=None) -> list[Hit]:
+    if allowed is not None:
+        scores = np.where(np.array([c["kind"] in allowed for c in chunks]), scores, -np.inf)
     order = np.argsort(-np.asarray(scores), kind="stable")[:k]
     return [Hit(chunks[i], float(scores[i])) for i in order]
 
@@ -37,13 +39,15 @@ class Retriever:
         self.chunks, self.vindex = chunks, vindex
         self.bm25 = BM25([embed_text(c) for c in chunks])
 
-    def search(self, query: str, k: int = 5, mode: str = "hybrid") -> list[Hit]:
+    def search(self, query: str, k: int = 5, mode: str = "hybrid", kinds: tuple[str, ...] | None = None) -> list[Hit]:
+        """kinds: restrict to chunk kinds, e.g. ("art", "anx") = operative text only
+        (recitals are interpretive; obligations must be cited from articles/annexes)."""
         if mode == "bm25":
-            return _top(self.bm25.scores(query), self.chunks, k)
+            return _top(self.bm25.scores(query), self.chunks, k, kinds)
         if self.vindex is None:
             raise ValueError(f"mode {mode!r} needs a vector index")
         if mode == "dense":
-            return _top(self.vindex.scores(query), self.chunks, k)
+            return _top(self.vindex.scores(query), self.chunks, k, kinds)
         if mode == "hybrid":
             n = len(self.chunks)
             fused = np.zeros(n)
@@ -51,7 +55,7 @@ class Retriever:
                 rank = np.empty(n, dtype=int)
                 rank[np.argsort(-np.asarray(sc), kind="stable")] = np.arange(n)
                 fused += 1.0 / (60 + rank + 1)
-            return _top(fused, self.chunks, k)
+            return _top(fused, self.chunks, k, kinds)
         raise ValueError(f"unknown mode {mode!r}")
 
 

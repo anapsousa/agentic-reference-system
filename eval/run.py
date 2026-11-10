@@ -30,7 +30,9 @@ def main() -> None:
     if a.build or not (idx_dir / "meta.json").exists():
         build_index(chunks, docs, idx_dir, a.model)
     r = Retriever(chunks, VectorIndex.load(chunks, idx_dir, query))
+    OP = ("art", "anx")
     results = {m: evaluate(r, gold, m) for m in ("bm25", "dense", "hybrid")}
+    results.update({m + "+operative": evaluate(r, gold, m, kinds=OP) for m in ("bm25", "dense", "hybrid")})
     meta = json.loads((idx_dir / "meta.json").read_text())
     out = ROOT / "reports"
     out.mkdir(exist_ok=True)
@@ -47,8 +49,10 @@ def main() -> None:
     ]
     for m, res in results.items():
         lines.append(f"| {m} | " + " | ".join(f"{res['summary'][c]:.2f}" for c in cols) + " |")
-    lines += ["", "## Misses at rank 1 (hybrid)", ""]
-    for row in results["hybrid"]["rows"]:
+    lines += ["", "`+operative` = recitals excluded (articles and annexes only). Recitals paraphrase the law in plain",
+              "language and outrank the operative text on natural-language queries; an obligation must be cited from an article.",
+              "", "## Misses at rank 1 (hybrid+operative)", ""]
+    for row in results["hybrid+operative"]["rows"]:
         if row["hit@1"] == 0:
             q = next(g for g in gold if g["id"] == row["id"])
             lines.append(f"- {row['id']} \"{q['q']}\" -> top1 `{row['top1']}`, wanted {q['relevant']}, hit@5={row['hit@5']:.0f}")
