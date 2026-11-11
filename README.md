@@ -15,9 +15,9 @@ Reference system for the "agentic AI principal" build track: an **AI Act complia
 
 ## What exists (P2)
 
-`src/triage/`: a LangGraph, `intake -> retrieve -> classify -> cite -> verify -> decide -> answer`. Input: a plain-language system description. Output: a proposed risk tier (prohibited, high, limited, minimal, undetermined), obligations each carrying a chunk id and a verbatim quote, and a status: `answered`, `escalated` (human review needed) or `refused`. Every quote is checked with P1's `verify_citation` and must come from text the model was shown; unverifiable ones are dropped, and if nothing verifies the case is refused. The answer is rendered by code from verified items only. Design choices are in `docs/adr/` (0001 to 0004).
+`src/triage/`: a LangGraph, `intake -> retrieve -> classify -> cite -> verify -> consistency -> decide -> answer`. Input: a plain-language system description. Output: a proposed risk tier (prohibited, high, limited, minimal, undetermined), obligations each carrying a chunk id and a verbatim quote, and a status: `answered`, `escalated` (human review needed) or `refused`. Every quote is checked with P1's `verify_citation` and must come from text the model was shown; unverifiable ones are dropped, and if nothing verifies the case is refused. The answer is rendered by code from verified items only. Design choices are in `docs/adr/` (0001 to 0005).
 
-- `python -m pytest`: 36 tests, none calls a model (scripted fake LLM, real statute text).
+- `python -m pytest`: 58 tests, none calls a model (scripted fake LLM, real statute text).
 - Live: `python -m triage "<description>" --cache <fastembed-cache> --trace out.json` runs `claude -p` on the subscription (tools disabled). One smoke case is recorded in `reports/smoke-2026-11-11.md` with token usage.
 - Needs `langgraph` in addition to the P1 dependencies, and an index (`python eval/run.py --build --cache <dir>`) for the default hybrid retriever.
 
@@ -46,7 +46,7 @@ python eval/run.py --build --cache <model-cache-dir>
 P2 gaps:
 - **Not yet under the lab harness.** The plan's done-when is "runs end to end under the lab harness". It runs end to end (tests plus one live case) and emits a node-level trace, but there is no Inspect or `claude_code.py`-style runner, no scoring and no pass^k. That is the P3 start.
 - **One live case, on the smallest model, evaluated by eye.** No tier accuracy has been measured against any labelled set. The 44-question gold set is retrieval-only.
-- **Quotes are verified, claims are not.** An obligation's paraphrase can overreach its quote (ADR 0003).
+- **Quotes are verified; claims only partly.** A deterministic gate (ADR 0005) checks numbers, durations, percentages, amounts, article/annex references and modal strength of each paraphrase against the quote or cited chunk. It does not check meaning: negation, scope and subject can still be wrong.
 - No clarifying question, no second retrieval, no cross-reference following, no long-term memory, no human-approval UI (escalation is a status, not a workflow).
 - The 0.6 confidence threshold is a guess, uncalibrated. Prompt-injection resistance is untested (P5). Tier "limited" and GPAI are coarsely handled.
 

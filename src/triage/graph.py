@@ -1,6 +1,6 @@
 """The triage graph.
 
-    intake -> retrieve -> classify -> cite -> verify -> decide -> answer
+    intake -> retrieve -> classify -> cite -> verify -> consistency -> decide -> answer
 
 Roles: retriever (code, P1), classifier (LLM), citer (LLM), verifier (code, P1's
 verify_citation), reviewer = `decide` (code: the escalation policy). The answer is rendered
@@ -16,6 +16,7 @@ from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, START, StateGraph
 
 from aiact_rag.retrieve import Retriever, verify_citation
+from .consistency import check_consistency
 from .llm import LLM, parse_json
 
 TIERS = ("prohibited", "high", "limited", "minimal", "undetermined")
@@ -137,6 +138,19 @@ def build_graph(chunks: list[dict], retriever: Retriever, llm: LLM, mode: str = 
         return {"basis_ok": ok, "verified": good, "rejected": bad,
                 "trace": _note(s, "verify", basis_ok=ok, basis_reason=why, verified=len(good), rejected=len(bad))}
 
+    def consistency(s: State) -> State:
+        """Paraphrase gate: drop verified-quote obligations whose text asserts a fact the source lacks."""
+        keep, rejected, notes = [], list(s["rejected"]), []
+        for o in s["verified"]:
+            missing, outside = check_consistency(str(o.get("text", "")), o["quote"], by_id[o["chunk_id"]])
+            if missing:
+                rejected.append({**o, "reason": "paraphrase asserts facts not in the quote or cited chunk: " + ", ".join(missing)})
+            else:
+                keep.append({**o, "outside_quote": outside} if outside else o)
+                notes += outside
+        return {"verified": keep, "rejected": rejected,
+                "trace": _note(s, "consistency", kept=len(keep), dropped=len(s["verified"]) - len(keep), outside_quote=notes)}
+
     def decide(s: State) -> State:
         reasons: list[str] = []
         if s["tier"] == "undetermined":
@@ -173,18 +187,18 @@ def build_graph(chunks: list[dict], retriever: Retriever, llm: LLM, mode: str = 
             out.append("Obligations (each quote verified verbatim):")
             out += [f'- {o["text"]} [{o["chunk_id"]}] "{o["quote"]}"' for o in s["verified"]]
         if s.get("rejected"):
-            out.append(f"\n{len(s['rejected'])} proposed obligation(s) dropped: their citation could not be verified.")
+            out.append(f"\n{len(s['rejected'])} proposed obligation(s) dropped: their citation or wording could not be verified against the source.")
         out.append(f"\n{DISCLAIMER}")
         return {"answer": "\n".join(out), "trace": _note(s, "answer")}
 
     g = StateGraph(State)
     for name, fn in (("intake", intake), ("retrieve", retrieve), ("classify", classify), ("cite", cite),
-                     ("verify", verify), ("decide", decide), ("answer", answer)):
+                     ("verify", verify), ("consistency", consistency), ("decide", decide), ("answer", answer)):
         g.add_node(name, fn)
     g.add_edge(START, "intake")
     g.add_conditional_edges("intake", lambda s: "answer" if s.get("status") == "refused" else "retrieve",
                             {"answer": "answer", "retrieve": "retrieve"})
-    for a, b in (("retrieve", "classify"), ("classify", "cite"), ("cite", "verify"), ("verify", "decide"),
+    for a, b in (("retrieve", "classify"), ("classify", "cite"), ("cite", "verify"), ("verify", "consistency"), ("consistency", "decide"),
                  ("decide", "answer"), ("answer", END)):
         g.add_edge(a, b)
     return g.compile(checkpointer=checkpointer or MemorySaver())
