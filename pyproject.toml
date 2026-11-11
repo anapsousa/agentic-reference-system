@@ -1,9 +1,9 @@
 [project]
 name = "aiact-rag"
 version = "0.1.0"
-description = "Retrieval layer (P1) of the AI Act compliance triage reference system"
+description = "Retrieval layer (P1) and triage agent (P2) of the AI Act compliance triage reference system"
 requires-python = ">=3.12"
-dependencies = ["numpy>=2", "fastembed>=0.9"]
+dependencies = ["numpy>=2", "fastembed>=0.9", "langgraph>=1.0"]
 
 [project.optional-dependencies]
 dev = ["pytest>=8"]
