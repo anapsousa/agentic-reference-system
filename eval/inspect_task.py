@@ -5,8 +5,10 @@
 
 `claude-code/<full model id>` is this repo's Inspect provider (src/triage/inspect_provider.py):
 `claude -p` on the subscription, isolated and model-pinned with the lab's own code. The cases
-are eval/triage_cases.jsonl: 14 descriptions with an expected tier, written by an LLM, not
-reviewed by a lawyer. This is the P2 "runs end to end" check, not the P3 evaluation.
+are a dev set (eval/triage_cases.jsonl, 14, tuned on in P2) or the held-out test set
+(-T cases=eval/triage_test.jsonl, 29, frozen in commit 364cfad before any P3 change). Both were
+written by an LLM, not reviewed by a lawyer. P3 runs both with --epochs 3; triage.p3 turns the
+logs into the 5-dimension report and the gate (docs/adr/0007).
 """
 from pathlib import Path
 
@@ -16,7 +18,7 @@ from inspect_ai.model import GenerateConfig
 from aiact_rag.index import DEFAULT_MODEL, VectorIndex, fastembed_fns
 from aiact_rag.ingest import load
 from aiact_rag.retrieve import Retriever
-from triage.inspect_eval import citations_verified, load_cases, status_appropriate, tier_correct, triage_agent
+from triage.inspect_eval import citations_verified, load_cases, safety, status_appropriate, tier_correct, triage_agent
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -34,7 +36,7 @@ def triage(retriever: str = "hybrid", cache: str | None = None, cases: str = "ev
     return Task(
         dataset=load_cases(ROOT / cases),
         solver=triage_agent(chunks, Retriever(chunks, vindex), mode=retriever),
-        scorer=[tier_correct(), citations_verified(chunks), status_appropriate()],
+        scorer=[tier_correct(), citations_verified(chunks), status_appropriate(), safety(chunks)],
         config=GenerateConfig(max_connections=max_connections),
-        metadata={"agent": "triage-p2", "retriever": retriever, "cases": cases},
+        metadata={"agent": "triage", "retriever": retriever, "cases": cases},
     )

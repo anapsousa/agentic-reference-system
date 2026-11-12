@@ -220,3 +220,24 @@ def test_resolution_never_rescues_a_quote():
     # id resolves, but the quote is not in that chunk: still rejected
     s, _ = run({"classifier": classifier(), "citer": citer(GOOD, ("Invented", "art-9#1", "providers shall paint it green"))})
     assert len(s["rejected"]) == 1 and "paint it green" not in s["answer"]
+
+
+def test_quote_in_the_sibling_part_is_reattributed_not_repaired():
+    # 12 Nov run 3 (t10): verbatim Art 6 text, labelled with the neighbouring part's id
+    q = quote_from("ai-act/art-6#1", 20)
+    s, _ = run({"classifier": classifier(tier="minimal", cid="ai-act/art-6#2", quote=q), "citer": citer()})
+    assert s["basis_ok"] and s["basis"]["chunk_id"] == "ai-act/art-6#1"
+    assert s["basis"]["reattributed_from"] == "ai-act/art-6#2" and s["basis"]["quote"] == q
+    assert "[ai-act/art-6#1]" in s["answer"] and "[ai-act/art-6#2]" not in s["answer"]
+
+
+def test_reattribution_never_crosses_to_another_provision():
+    # Art 9 text labelled as Art 6: different provision, so it stays a failed citation
+    s, _ = run({"classifier": classifier(cid="ai-act/art-6#1", quote=GOOD[2]), "citer": citer(GOOD)})
+    assert not s["basis_ok"] and s["status"] != "answered"
+
+
+def test_reattribution_never_rescues_an_invented_quote():
+    s, _ = run({"classifier": classifier(cid="ai-act/art-6#2", quote="high-risk systems may skip all of this"),
+                "citer": citer(GOOD)})
+    assert not s["basis_ok"]
