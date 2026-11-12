@@ -1,0 +1,24 @@
+# Tests + the P3 eval gate. CI holds no Claude credentials and must not: evals run locally on
+# the subscription and their reports are committed; the gate checks that evidence (docs/adr/0007).
+name: ci
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  test-and-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # the gate diffs against the merge base
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.14"
+      - run: uv sync --extra eval --locked
+      - run: uv run pytest -q
+      - name: eval gate
+        run: uv run python -m triage.p3 gate --base ${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || 'HEAD~1' }}

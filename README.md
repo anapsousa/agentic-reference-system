@@ -2,7 +2,7 @@
 
 Reference system for the "agentic AI principal" build track: an **AI Act compliance triage agent**. Input: a plain-language description of an AI system. Output (planned): a proposed risk tier, obligations with verifiable citations, and escalation to a human when confidence is low.
 
-**Status: P1 (retrieval) and P2 (triage agent, runs end to end under the lab's Inspect harness).** Private repo.
+**Status: P1 (retrieval), P2 (triage agent under the lab's Inspect harness) and P3 (five-dimension evaluation, pass^3, gate).** Private repo.
 
 ## What exists (P1)
 
@@ -17,7 +17,7 @@ Reference system for the "agentic AI principal" build track: an **AI Act complia
 
 `src/triage/`: a LangGraph, `intake -> retrieve -> classify -> cite -> verify -> consistency -> decide -> answer`. Input: a plain-language system description. Output: a proposed risk tier (prohibited, high, limited, minimal, undetermined), obligations each carrying a chunk id and a verbatim quote, and a status: `answered`, `escalated` (human review needed) or `refused`. Every quote is checked with P1's `verify_citation` and must come from text the model was shown; unverifiable ones are dropped, and if nothing verifies the case is refused. The answer is rendered by code from verified items only. Design choices are in `docs/adr/` (0001 to 0005).
 
-- `python -m pytest`: 69 tests, none calls a model (scripted fake LLM or Inspect's mockllm, real statute text).
+- `python -m pytest`: 91 tests, none calls a model (scripted fake LLM or Inspect's mockllm, real statute text).
 - Live: `python -m triage "<description>" --cache <fastembed-cache> --trace out.json` runs `claude -p` on the subscription (tools disabled). One smoke case is recorded in `reports/smoke-2026-11-11.md` with token usage.
 - Needs `langgraph` in addition to the P1 dependencies, and an index (`python eval/run.py --build --cache <dir>`) for the default hybrid retriever.
 
@@ -29,6 +29,22 @@ Reference system for the "agentic AI principal" build track: an **AI Act complia
 uv sync --extra eval                  # venv off the exFAT volume: UV_PROJECT_ENVIRONMENT=<internal dir>
 uv run inspect eval eval/inspect_task.py --model claude-code/claude-haiku-5-5 -T cache=<fastembed-cache>
 uv run inspect view                   # browse the logs (logs/ is gitignored)
+```
+
+## P3: five dimensions, pass^3, gate (see `reports/p3-eval-2026-11-12.md`, `docs/adr/0007`)
+
+Held-out set `eval/triage_test.jsonl` (29 cases, frozen before any P3 change), 3 epochs, haiku-5-5:
+
+| Quality | Safety | Reliability | Latency | Cost |
+|---|---|---|---|---|
+| tier 99%, citations 100%, answer-vs-escalate 80% | 0 unsafe of 87; 5/5 injections held every epoch | pass^3 all layers 62% (tier alone 97%) | p50 13 s, p95 19 s per triage | $0.006 (EUR 0.0054) per triage, API-equivalent |
+
+The weakness is needless escalation (borderline flags on clear cases), not wrong answers. 99% tier accuracy means the set is too easy: it has no contested edges yet.
+
+```
+uv run inspect eval eval/inspect_task.py --model claude-code/claude-haiku-5-5 --epochs 3 -T cache=<dir> [-T cases=eval/triage_test.jsonl]
+uv run python -m triage.p3 report logs/<dev>.eval logs/<test>.eval --json reports/p3 --out tables.md --usd-eur <rate>
+uv run python -m triage.p3 gate --base origin/main     # also in CI (.github/workflows/ci.yml)
 ```
 
 ## Result (see `reports/retrieval-eval.md`)
@@ -46,7 +62,7 @@ Main finding: recitals paraphrase the law in plain language and outrank the oper
 
 ```
 python -m venv <somewhere-off-the-exFAT-volume> && pip install numpy fastembed pytest
-python -m pytest                      # 69 tests, no model download needed
+python -m pytest                      # 91 tests, no model download needed
 python src/aiact_rag/ingest.py        # rebuild chunks.jsonl from data/raw
 python eval/run.py --build --cache <model-cache-dir>
 ```
@@ -54,13 +70,13 @@ python eval/run.py --build --cache <model-cache-dir>
 ## NOT done (read before trusting the numbers)
 
 P2 gaps:
-- **14 cases, LLM-labelled, now a development set.** Two id-parsing fixes were made after seeing them (ADR 0006), so they no longer measure generalisation. P3 needs a held-out set written before its first run, ideally checked by someone who knows the Act. No pass^k yet; three runs on one model show the failures move from run to run.
-- **Chunk-boundary attribution** (run 3, t10): a verbatim quote attributed to the neighbouring split part of the same article fails verification. Not fixed; P3 decision.
-- Latency and cost are in the Inspect logs per sample but not yet reported as dimensions (P3).
+- **Held-out set: 29 LLM-written cases, no lawyer review, clear centre of each tier only.** The 14 P2 cases are a dev set. The P3 test set has now been seen: any escalation-policy change made from its results needs a fresh held-out set (test v2) with the contested edges (Art 6(3), Annex I, GPAI).
+- **Needless escalation**: about one triage in five escalates a clear case on a borderline flag. Safe, costly, untuned on purpose (ADR 0007).
+- One model, k = 3. The gate's floors are policy lines (about ±17 points of noise per run on 29 cases), not significance tests.
 - The eval extra inherits the lab's lockfile, including the fsspec advisory held back by `inspect-ai==0.3.252`; bumping Inspect is a lab decision first.
 - **Quotes are verified; claims only partly.** A deterministic gate (ADR 0005) checks numbers, durations, percentages, amounts, article/annex references and modal strength of each paraphrase against the quote or cited chunk. It does not check meaning: negation, scope and subject can still be wrong.
 - No clarifying question, no second retrieval, no cross-reference following, no long-term memory, no human-approval UI (escalation is a status, not a workflow).
-- The 0.6 confidence threshold is a guess, uncalibrated. Prompt-injection resistance is untested (P5). Tier "limited" and GPAI are coarsely handled.
+- The 0.6 confidence threshold is a guess, uncalibrated. Prompt injection: 5 direct-injection cases held in P3; indirect injection via retrieved text and tool abuse are P5. Tier "limited" and GPAI are coarsely handled.
 
 P1 gaps:
 
@@ -69,4 +85,4 @@ P1 gaps:
 - Only one embedding model, no chunk-size or reranker experiments, no cross-encoder. Dense vs hybrid is not distinguishable here.
 - Cross-references are not followed (Art 6 points to Annex III; the retriever does not).
 - Consolidated texts and later amendments (for example digital-omnibus changes) are not tracked; the corpus is the OJ version retrieved on the date above.
-- Nothing runs in CI. No Docker. No LLM call anywhere in P1.
+- CI runs tests and the eval gate on committed reports; it never calls a model. No Docker. No LLM call anywhere in P1.
