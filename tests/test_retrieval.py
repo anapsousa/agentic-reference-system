@@ -1,3 +1,5 @@
+import zlib
+
 import numpy as np
 import pytest
 
@@ -19,7 +21,7 @@ def stub_embed(texts):
     out = np.zeros((len(texts), 64), dtype=np.float32)
     for i, t in enumerate(texts):
         for w in tokenize(t):
-            out[i, hash(w) % 64] += 1.0
+            out[i, zlib.crc32(w.encode()) % 64] += 1.0
     return out
 
 
