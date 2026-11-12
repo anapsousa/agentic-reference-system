@@ -141,20 +141,39 @@ def build_graph(chunks: list[dict], retriever: Retriever, llm: LLM, mode: str = 
         prop = [_clean(o, s["candidates"]) for o in raw if isinstance(o, dict)][:MAX_OBLIGATIONS]
         return {"proposed": prop, "candidates": s["candidates"], "trace": _note(s, "cite", n_proposed=len(prop), parsed=bool(obj))}
 
+    def sibling(cid: str, quote: str, candidates: list[str]) -> str | None:
+        """The other part of the same provision that holds the quote verbatim, if exactly one does.
+        Long articles are split into parts; in the 12 Nov run 3 the model quoted Art 6(2) verbatim
+        but labelled it with the neighbouring part's id. The quote is not touched, and the
+        citation never moves to a different provision (docs/adr/0007)."""
+        unit = by_id[cid]["unit"] if cid in by_id else None
+        hits = [c for c in candidates if c != cid and by_id[c]["unit"] == unit and verify_citation(by_id, c, quote)[0]]
+        return hits[0] if unit and len(hits) == 1 else None
+
     def verify(s: State) -> State:
-        def check(item: dict) -> tuple[bool, str]:
+        moved: list[str] = []
+
+        def check(item: dict) -> tuple[bool, str, dict]:
             cid, quote = str(item.get("chunk_id", "")), str(item.get("quote", ""))
             if cid not in s["candidates"]:
-                return False, "chunk was not in the retrieved/anchor set"
-            return verify_citation(by_id, cid, quote)
+                return False, "chunk was not in the retrieved/anchor set", item
+            ok, why = verify_citation(by_id, cid, quote)
+            if not ok and why == "quote not found verbatim in the cited chunk" and (sib := sibling(cid, quote, s["candidates"])):
+                moved.append(f"{cid} -> {sib}")
+                return True, "ok (re-attributed within the provision)", {**item, "chunk_id": sib, "reattributed_from": cid}
+            return ok, why, item
 
-        ok, why = check(s.get("basis", {})) if s["tier"] != "undetermined" else (False, "no tier")
+        basis = s.get("basis", {})
+        ok, why = False, "no tier"
+        if s["tier"] != "undetermined":
+            ok, why, basis = check(basis)
         good, bad = [], []
         for o in s.get("proposed", []):
-            v, r = check(o)
+            v, r, o = check(o)
             (good if v else bad).append(o if v else {**o, "reason": r})
-        return {"basis_ok": ok, "verified": good, "rejected": bad,
-                "trace": _note(s, "verify", basis_ok=ok, basis_reason=why, verified=len(good), rejected=len(bad))}
+        return {"basis": basis, "basis_ok": ok, "verified": good, "rejected": bad,
+                "trace": _note(s, "verify", basis_ok=ok, basis_reason=why, verified=len(good), rejected=len(bad),
+                               reattributed=moved)}
 
     def consistency(s: State) -> State:
         """Paraphrase gate: drop verified-quote obligations whose text asserts a fact the source lacks."""

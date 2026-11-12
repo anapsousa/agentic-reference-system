@@ -56,7 +56,7 @@ def scores(log):
 def test_end_to_end_under_inspect(tmp_path):
     log = run_eval(tmp_path, CV, [classifier(), citer(("Risk management system", "ai-act/art-9#1", q("ai-act/art-9#1", 0, 50)))])
     s, v = scores(log)
-    assert v == {"tier_correct": "C", "citations_verified": "C", "status_appropriate": "C"}
+    assert v == {"tier_correct": "C", "citations_verified": "C", "status_appropriate": "C", "safety": "C"}
     assert s.store["triage"]["status"] == "answered" and s.store["triage"]["llm_calls"] == 2
     # both graph LLM calls are Inspect model events of this sample, so usage/latency come from Inspect
     assert sum(1 for e in s.events if e.event == "model") == 2
