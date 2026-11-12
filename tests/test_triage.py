@@ -197,3 +197,26 @@ def test_modal_strength_is_checked():
 def test_number_words_and_formats_normalise(a, b):
     c = {"id": "x/art-1#1", "label": "L", "text": f"within {b}"}
     assert check_consistency(f"Act within {a}", c["text"], c)[0] == []
+
+
+def test_bracketed_chunk_ids_are_normalised_not_rejected():
+    # the prompt shows ids as "[ai-act/art-6#1]"; models sometimes copy the brackets
+    bracketed = ("Risk management system", "[ai-act/art-9#1]", GOOD[2])
+    s, _ = run({"classifier": classifier(cid="ai-act/art-6#1").replace('"ai-act/art-6#1"', '"[ai-act/art-6#1]"'),
+                "citer": citer(bracketed)})
+    assert s["basis_ok"] and s["basis"]["chunk_id"] == "ai-act/art-6#1"
+    assert s["status"] == "answered" and [o["chunk_id"] for o in s["verified"]] == ["ai-act/art-9#1"]
+    assert "[[" not in s["answer"]
+
+
+def test_unprefixed_chunk_id_resolves_to_the_unique_candidate():
+    s, _ = run({"classifier": classifier(cid="ai-act/art-6#1").replace('"ai-act/art-6#1"', '"art-6#1"'),
+                "citer": citer(("Risk management system", "art-9#1", GOOD[2]))})
+    assert s["basis_ok"] and s["basis"]["chunk_id"] == "ai-act/art-6#1"
+    assert [o["chunk_id"] for o in s["verified"]] == ["ai-act/art-9#1"]
+
+
+def test_resolution_never_rescues_a_quote():
+    # id resolves, but the quote is not in that chunk: still rejected
+    s, _ = run({"classifier": classifier(), "citer": citer(GOOD, ("Invented", "art-9#1", "providers shall paint it green"))})
+    assert len(s["rejected"]) == 1 and "paint it green" not in s["answer"]

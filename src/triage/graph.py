@@ -16,6 +16,7 @@ from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, START, StateGraph
 
 from aiact_rag.retrieve import Retriever, verify_citation
+
 from .consistency import check_consistency
 from .llm import LLM, parse_json
 
@@ -59,6 +60,23 @@ class State(TypedDict, total=False):
 
 def _note(state: State, node: str, **kw) -> list[dict]:
     return state.get("trace", []) + [{"node": node, "t": round(time.time(), 3), **kw}]
+
+
+def _resolve(raw, candidates: list[str]) -> str:
+    """Map the chunk id the model wrote onto the candidate set it was shown. Models copy the
+    prompt's "[ai-act/art-5#1]" brackets or drop the "ai-act/" prefix (both seen in the first two
+    Inspect runs, 12 Nov). Accepted: exact, brackets stripped, or a suffix matching exactly one
+    candidate. Anything else is returned as written and fails verification. The quote is never
+    touched: it must still be verbatim in the resolved chunk."""
+    cid = str(raw or "").strip().removeprefix("[").removesuffix("]").strip()
+    if cid in candidates:
+        return cid
+    tail = [c for c in candidates if c.endswith("/" + cid)]
+    return tail[0] if len(tail) == 1 else cid
+
+
+def _clean(item, candidates: list[str]) -> dict:
+    return {**item, "chunk_id": _resolve(item.get("chunk_id"), candidates)} if isinstance(item, dict) else {}
 
 
 def _fmt(chunks: list[dict]) -> str:
@@ -108,7 +126,7 @@ def build_graph(chunks: list[dict], retriever: Retriever, llm: LLM, mode: str = 
             conf = max(0.0, min(1.0, float(obj.get("confidence", 0))))
         except (TypeError, ValueError):
             conf = 0.0
-        basis = obj.get("basis") if isinstance(obj.get("basis"), dict) else {}
+        basis = _clean(obj.get("basis"), s["candidates"])
         return {"tier": tier, "confidence": conf, "borderline": bool(obj.get("borderline", not obj)),
                 "rationale": str(obj.get("rationale", "")), "basis": basis,
                 "trace": _note(s, "classify", tier=tier, confidence=conf, parsed=bool(obj))}
@@ -120,7 +138,7 @@ def build_graph(chunks: list[dict], retriever: Retriever, llm: LLM, mode: str = 
         s = {**s, "candidates": list(dict.fromkeys(s["candidates"] + extra))}
         obj = parse_json(llm.complete(CITER, _prompt(s, f"STATED RISK TIER: {s['tier']}\n"))) or {}
         raw = obj.get("obligations") if isinstance(obj.get("obligations"), list) else []
-        prop = [o for o in raw if isinstance(o, dict)][:MAX_OBLIGATIONS]
+        prop = [_clean(o, s["candidates"]) for o in raw if isinstance(o, dict)][:MAX_OBLIGATIONS]
         return {"proposed": prop, "candidates": s["candidates"], "trace": _note(s, "cite", n_proposed=len(prop), parsed=bool(obj))}
 
     def verify(s: State) -> State:

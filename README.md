@@ -2,7 +2,7 @@
 
 Reference system for the "agentic AI principal" build track: an **AI Act compliance triage agent**. Input: a plain-language description of an AI system. Output (planned): a proposed risk tier, obligations with verifiable citations, and escalation to a human when confidence is low.
 
-**Status: P1 (retrieval) and P2 (triage agent, first version).** Private repo.
+**Status: P1 (retrieval) and P2 (triage agent, runs end to end under the lab's Inspect harness).** Private repo.
 
 ## What exists (P1)
 
@@ -17,9 +17,19 @@ Reference system for the "agentic AI principal" build track: an **AI Act complia
 
 `src/triage/`: a LangGraph, `intake -> retrieve -> classify -> cite -> verify -> consistency -> decide -> answer`. Input: a plain-language system description. Output: a proposed risk tier (prohibited, high, limited, minimal, undetermined), obligations each carrying a chunk id and a verbatim quote, and a status: `answered`, `escalated` (human review needed) or `refused`. Every quote is checked with P1's `verify_citation` and must come from text the model was shown; unverifiable ones are dropped, and if nothing verifies the case is refused. The answer is rendered by code from verified items only. Design choices are in `docs/adr/` (0001 to 0005).
 
-- `python -m pytest`: 58 tests, none calls a model (scripted fake LLM, real statute text).
+- `python -m pytest`: 69 tests, none calls a model (scripted fake LLM or Inspect's mockllm, real statute text).
 - Live: `python -m triage "<description>" --cache <fastembed-cache> --trace out.json` runs `claude -p` on the subscription (tools disabled). One smoke case is recorded in `reports/smoke-2026-11-11.md` with token usage.
 - Needs `langgraph` in addition to the P1 dependencies, and an index (`python eval/run.py --build --cache <dir>`) for the default hybrid retriever.
+
+## Under the lab harness (P2 done-when)
+
+`eval/inspect_task.py` runs the unchanged graph as an Inspect solver over 14 tier-labelled cases (`eval/triage_cases.jsonl`), with three scorers: `tier_correct`, `citations_verified` (independent re-check of every quote in the answer) and `status_appropriate`. The model is `claude-code/<full id>`, an Inspect provider in this repo that runs `claude -p` on the subscription with the lab's isolation and model-pinning code, imported from `agent-reliability-lab` at a pinned commit; shared packages are constrained to the lab's lockfile. Design: `docs/adr/0006`. Three runs on 12 Nov (haiku-5-5): tier 12, 13, 13 of 14; citations 14/14 every run; injection case never minimal. Details and failures: `reports/inspect-2026-11-12.md`.
+
+```
+uv sync --extra eval                  # venv off the exFAT volume: UV_PROJECT_ENVIRONMENT=<internal dir>
+uv run inspect eval eval/inspect_task.py --model claude-code/claude-haiku-5-5 -T cache=<fastembed-cache>
+uv run inspect view                   # browse the logs (logs/ is gitignored)
+```
 
 ## Result (see `reports/retrieval-eval.md`)
 
@@ -36,7 +46,7 @@ Main finding: recitals paraphrase the law in plain language and outrank the oper
 
 ```
 python -m venv <somewhere-off-the-exFAT-volume> && pip install numpy fastembed pytest
-python -m pytest                      # 19 tests, no model download needed
+python -m pytest                      # 69 tests, no model download needed
 python src/aiact_rag/ingest.py        # rebuild chunks.jsonl from data/raw
 python eval/run.py --build --cache <model-cache-dir>
 ```
@@ -44,8 +54,10 @@ python eval/run.py --build --cache <model-cache-dir>
 ## NOT done (read before trusting the numbers)
 
 P2 gaps:
-- **Not yet under the lab harness.** The plan's done-when is "runs end to end under the lab harness". It runs end to end (tests plus one live case) and emits a node-level trace, but there is no Inspect or `claude_code.py`-style runner, no scoring and no pass^k. That is the P3 start.
-- **One live case, on the smallest model, evaluated by eye.** No tier accuracy has been measured against any labelled set. The 44-question gold set is retrieval-only.
+- **14 cases, LLM-labelled, now a development set.** Two id-parsing fixes were made after seeing them (ADR 0006), so they no longer measure generalisation. P3 needs a held-out set written before its first run, ideally checked by someone who knows the Act. No pass^k yet; three runs on one model show the failures move from run to run.
+- **Chunk-boundary attribution** (run 3, t10): a verbatim quote attributed to the neighbouring split part of the same article fails verification. Not fixed; P3 decision.
+- Latency and cost are in the Inspect logs per sample but not yet reported as dimensions (P3).
+- The eval extra inherits the lab's lockfile, including the fsspec advisory held back by `inspect-ai==0.3.252`; bumping Inspect is a lab decision first.
 - **Quotes are verified; claims only partly.** A deterministic gate (ADR 0005) checks numbers, durations, percentages, amounts, article/annex references and modal strength of each paraphrase against the quote or cited chunk. It does not check meaning: negation, scope and subject can still be wrong.
 - No clarifying question, no second retrieval, no cross-reference following, no long-term memory, no human-approval UI (escalation is a status, not a workflow).
 - The 0.6 confidence threshold is a guess, uncalibrated. Prompt-injection resistance is untested (P5). Tier "limited" and GPAI are coarsely handled.
