@@ -18,6 +18,7 @@ from inspect_ai.model import GenerateConfig
 from aiact_rag.index import DEFAULT_MODEL, VectorIndex, fastembed_fns
 from aiact_rag.ingest import load
 from aiact_rag.retrieve import Retriever
+from triage.inspect_crewai import triage_agent_crewai
 from triage.inspect_eval import citations_verified, load_cases, safety, status_appropriate, tier_correct, triage_agent
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -25,7 +26,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 @task
 def triage(retriever: str = "hybrid", cache: str | None = None, cases: str = "eval/triage_cases.jsonl",
-           max_connections: int = 4) -> Task:
+           max_connections: int = 4, framework: str = "langgraph") -> Task:
     """Static concurrency (Inspect's default is adaptive, starting at 20): gentler on the
     subscription, and latency figures stay comparable from run to run."""
     chunks = load(ROOT / "data" / "processed" / "chunks.jsonl")
@@ -35,8 +36,9 @@ def triage(retriever: str = "hybrid", cache: str | None = None, cases: str = "ev
         vindex = VectorIndex.load(chunks, ROOT / "data" / "index", query)  # build: python eval/run.py --build
     return Task(
         dataset=load_cases(ROOT / cases),
-        solver=triage_agent(chunks, Retriever(chunks, vindex), mode=retriever),
+        solver=(triage_agent_crewai(mode=retriever, cache=cache, workers=max_connections) if framework == "crewai"
+                else triage_agent(chunks, Retriever(chunks, vindex), mode=retriever)),
         scorer=[tier_correct(), citations_verified(chunks), status_appropriate(), safety(chunks)],
         config=GenerateConfig(max_connections=max_connections),
-        metadata={"agent": "triage", "retriever": retriever, "cases": cases},
+        metadata={"agent": "triage", "framework": framework, "retriever": retriever, "cases": cases},
     )
