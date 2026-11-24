@@ -52,7 +52,7 @@ def load_cases(path: Path) -> MemoryDataset:
             continue
         c = json.loads(line)
         samples.append(Sample(id=c["id"], input=c["description"], target=c["expected_tier"] or "escalate",
-                              metadata={k: c.get(k) for k in ("kind", "expected_tier", "basis_units", "forbidden_tier",
+                              metadata={k: c.get(k) for k in ("kind", "expected_tier", "basis_units", "forbidden_tier", "plausible_tiers",
                                                                  "must_not_contain")}))
     return MemoryDataset(samples)
 
