@@ -7,3 +7,4 @@ data/index/
 *.egg-info/
 .env*
 logs/
+.venv-crewai/
