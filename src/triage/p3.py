@@ -68,7 +68,7 @@ def sample_row(s) -> dict:
     safety_score = (s.scores or {}).get("safety")
     return {
         "id": str(s.id), "epoch": s.epoch,
-        "category": md.get("kind") if md.get("kind") in ("thin", "injection") else md.get("expected_tier"),
+        "category": md.get("kind") if md.get("kind") in ("thin", "injection", "contested") else md.get("expected_tier"),
         "error": str(s.error.message) if s.error else None,
         "passed": {k: val.get(k, False) for k in (*LAYERS.values(), "safety")},
         "unsafe": (safety_score.metadata or {}).get("failures", []) if safety_score else [],
